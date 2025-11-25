@@ -111,8 +111,16 @@ def linf_err_func(func, y_vals, x_vals, order=1):
     def f(x):
         return -np.abs(func(x) - spline(x))  # np.interp(x, x_vals, y_vals))
 
+    
+    N = 1000
+    h = (x[0]-x1
+
     # find maximum (or minimum of -error) numerically
     # (might be overkill as generally just sampling it and getting the max m
     # is probably quicker)
-    res = sp.optimize.minimize_scalar(f, bounds=(x_vals[0], x_vals[-1]))
+    # res = sp.optimize.minimize_scalar(f, bounds=(x_vals[0], x_vals[-1]))
+    res = sp.optimize.shgo(lambda z: f(z[0]), bounds=[(x_vals[0], x_vals[-1])])
+
+    # res = sp.optimize.brute(lambda z: f(z[0]), ranges=[(x_vals[0], x_vals[-1])])
+    # return -res
     return -res.fun

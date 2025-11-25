@@ -1,5 +1,6 @@
 import numpy as np
 import scipy as sp
+from numba import njit
 
 
 def basis(x, i: int, h):
