@@ -1,8 +1,5 @@
-from typing import Literal
-from matplotlib.pylab import int32
 import numpy as np
 import meshio
-from numpy.typing import NDArray
 
 
 class MeshOps:
@@ -13,19 +10,16 @@ class MeshOps:
     """
 
     def __init__(self, filename):
-        mesh: meshio.Mesh = meshio.read(filename)
+        mesh = meshio.read(filename)
 
-        self.points: NDArray[np.floating] = mesh.points[:, :2]  # (N,2)
-        self.nbNod: int = self.points.shape[0]
-
-        self.triTags: NDArray[int32] = np.array([])
-        self.lineTags: NDArray[int32] = np.array([])
+        self.points = mesh.points[:, :2]  # (N,2)
+        self.nbNod = self.points.shape[0]
 
         # --- extract elements by type ---
-        self.triangles: NDArray[int32] = np.array([])
-        self.triangles6: NDArray[int32] = np.array([])
-        self.lines: NDArray[int32] = np.array([])
-        self.lines3: NDArray[int32] = np.array([])
+        self.triangles = []
+        self.triangles6 = []
+        self.lines = []
+        self.lines3 = []
 
         for block in mesh.cells:
             if block.type == "triangle":
@@ -46,13 +40,15 @@ class MeshOps:
         if len(self.lines3) > 0:
             self.lines = self.lines3[:, :2]
 
-        self.nbTriangles: int = len(self.triangles)
-        self.nbLines: int = len(self.lines)
+        self.nbTriangles = len(self.triangles)
+        self.nbLines = len(self.lines)
 
     # ----------------------------------------------------------
     #   Physical tag extraction from meshio cell_data
     # ----------------------------------------------------------
-    def _extract_physical_tags(self, mesh: meshio.Mesh) -> None:
+    def _extract_physical_tags(self, mesh):
+        self.triTags = None
+        self.lineTags = None
 
         if "gmsh:physical" in mesh.cell_data_dict:
             tags = mesh.cell_data_dict["gmsh:physical"]
@@ -72,63 +68,61 @@ class MeshOps:
     # ----------------------------------------------------------
     #   Basic info
     # ----------------------------------------------------------
-    def getNumberNodes(self) -> int:
+    def getNumberNodes(self):
         return self.nbNod
 
-    def getNodeList(self) -> NDArray[np.floating]:
+    def getNodeList(self):
         return self.points
 
-    def getNumberOfTriangles(self) -> int:
+    def getNumberOfTriangles(self):
         return self.nbTriangles
 
-    def getNumberOfTaggedLines(self) -> int:
+    def getNumberOfTaggedLines(self):
         return self.nbLines
 
-    def getVolumeElementListTriangles(self) -> NDArray[int32]:
+    def getVolumeElementListTriangles(self):
         return self.triangles[:, :3]
 
-    def getTagOfLine(self, i) -> NDArray[int32]:
+    def getTagOfLine(self, i):
         return self.lineTags[i]
 
-    def getTagOfTriangle(self, i) -> NDArray[int32]:
+    def getTagOfTriangle(self, i):
         return self.triTags[i]
 
     # ----------------------------------------------------------
     #   Node connectivity
     # ----------------------------------------------------------
-    def getNodeNumbersOfLine(self, i, order=1) -> NDArray[int32]:
+    def getNodeNumbersOfLine(self, i, order=1):
         if order == 1:
             return self.lines[i, :2]
         elif order == 2:
             return self.lines3[i, :3]
-        raise Exception("wrong order")
 
-    def getNodeNumbersOfTriangle(self, i, order=1) -> NDArray[int32]:
+    def getNodeNumbersOfTriangle(self, i, order=1):
         if order == 1:
             return self.triangles[i, :3]
         elif order == 2:
             return self.triangles6[i, :6]
-        raise Exception("wrong order")
 
     # ----------------------------------------------------------
     #   Geometry: Jacobians
     # ----------------------------------------------------------
-    def calcJacobianOfLine(self, i: int) -> NDArray[np.floating]:
+    def calcJacobianOfLine(self, i):
         n1, n2 = self.lines[i, :2]
         p1, p2 = self.points[n1], self.points[n2]
         return 0.5 * (p2 - p1)  # 2x1 vector
 
-    def calcJacobianDeterminantOfLine(self, i: int) -> np.floating:
+    def calcJacobianDeterminantOfLine(self, i):
         J = self.calcJacobianOfLine(i)
         return np.linalg.norm(J)
 
-    def calcMappedIntegrationPointOfLine(self, i: int, xi: int) -> NDArray[np.floating]:
+    def calcMappedIntegrationPointOfLine(self, i, xi):
         # xi in [-1,1]
         n1, n2 = self.lines[i, :2]
         p1, p2 = self.points[n1], self.points[n2]
         return 0.5 * ((1 - xi) * p1 + (1 + xi) * p2)
 
-    def getNormalVectorOfLine(self, i: int) -> NDArray[np.floating]:
+    def getNormalVectorOfLine(self, i):
         n1, n2 = self.lines[i, :2]
         p1, p2 = self.points[n1], self.points[n2]
         t = p2 - p1
@@ -136,19 +130,19 @@ class MeshOps:
         return np.array([t[1], -t[0]])
 
     # ---------------- triangle geometry -----------------------
-    def calcJacobianOfTriangle(self, i: int) -> NDArray[np.floating]:
+    def calcJacobianOfTriangle(self, i):
         n1, n2, n3 = self.triangles[i, :3]
         p1, p2, p3 = self.points[n1], self.points[n2], self.points[n3]
         J = np.array([[p2[0] - p1[0], p3[0] - p1[0]], [p2[1] - p1[1], p3[1] - p1[1]]])
         return J
 
-    def calcInverseJacobianOfTriangle(self, i: int) -> NDArray[np.floating]:
+    def calcInverseJacobianOfTriangle(self, i):
         return np.linalg.inv(self.calcJacobianOfTriangle(i))
 
-    def calcJacobianDeterminantOfTriangle(self, i: int) -> np.floating:
+    def calcJacobianDeterminantOfTriangle(self, i):
         return abs(np.linalg.det(self.calcJacobianOfTriangle(i)))
 
-    def calcMappedIntegrationPointOfTriangle(self, i, ip) -> NDArray[np.floating]:
+    def calcMappedIntegrationPointOfTriangle(self, i, ip):
         # ip = (xi,eta) in ref triangle
         n1 = self.triangles[i, 0]
         p1 = self.points[n1]
@@ -159,17 +153,13 @@ class MeshOps:
     #   Quadrature rules
     # ----------------------------------------------------------
     @staticmethod
-    def IntegrationRuleOfLine() -> (
-        tuple[NDArray[np.floating], NDArray[np.floating], Literal[3]]
-    ):
+    def IntegrationRuleOfLine():
         pts = np.array([-np.sqrt(3 / 5), 0.0, np.sqrt(3 / 5)])
         wts = np.array([5 / 9, 8 / 9, 5 / 9])
         return wts, pts, 3
 
     @staticmethod
-    def IntegrationRuleOfTriangle() -> (
-        tuple[NDArray[np.floating], NDArray[np.floating], Literal[7]]
-    ):
+    def IntegrationRuleOfTriangle():
         pts = np.zeros((7, 2))
         pts[0] = [1 / 3, 1 / 3]
         pts[1] = [(6 + np.sqrt(15)) / 21, (6 + np.sqrt(15)) / 21]

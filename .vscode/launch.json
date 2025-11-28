@@ -8,7 +8,8 @@
             "name": "PE1 Demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
+            //"program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
+            "program": "${workspaceFolder}/homework/pe2/poisson_demo.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/homework/pe2"
         }
