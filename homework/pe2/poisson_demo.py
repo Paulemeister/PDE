@@ -315,9 +315,9 @@ param_poisson: ParamDict = dict(
     # source=lambda x, y: np.float64(1.0),
     source=lambda x, y: np.sin(2 * np.pi * x) * np.cos(2 * np.pi * y),
     dirichlet=0,
-    neumann=1,
+    neumann=0,
     order=1,
 )
 # solve_poisson("mesh/unitSquareStokes.msh", param_poisson)
+# solve_poisson("mesh/unitSquare2.msh", param_poisson)
 solve_poisson("mesh/unitSquare2.msh", param_poisson)
-# solve_poisson("mesh/unitSquare1.msh", param_poisson)

@@ -5,11 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "PE1 Demo",
+            "name": "PE1 Poisson",
             "type": "debugpy",
             "request": "launch",
             //"program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
             "program": "${workspaceFolder}/homework/pe2/poisson_demo.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/homework/pe2"
+        },{
+            "name": "PE1 Stokes",
+            "type": "debugpy",
+            "request": "launch",
+            //"program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
+            "program": "${workspaceFolder}/homework/pe2/stokes.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/homework/pe2"
         }
