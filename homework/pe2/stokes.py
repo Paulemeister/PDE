@@ -1,8 +1,5 @@
 from typing import Callable
 from matplotlib.collections import LineCollection
-import matplotlib.lines
-from meshio import Mesh
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import numpy as np
 from numpy.typing import NDArray
 from scipy.sparse import lil_matrix
@@ -127,46 +124,30 @@ def assemble_stokes(
         con3 = mesh.getNodeNumbersOfTriangle(e, order=1)
         con3_mapped = np.array([p1_map[p] for p in con3])
 
-        # elemBx = np.zeros((p_2_n, p_1_n))
-        # elemBy = np.zeros((p_2_n, p_1_n))
-        # tempx = np.zeros_like(elemBx)
-        # tempy = np.zeros_like(elemBy)
-        # # Iterate over all points of the quadrature
-        # for i in range(N_quadr):
-        #     # get gradients in actual element
-        #     phi1 = shape1_ref[i, None]  # 1 x N_p1
-
-        #     # invJ 2x2
-        #     # dshape2_ref N_quadr x N_p2 x 2
-        #     # dphi2 = dshape2_ref[i] @ invJ
-
-        #     x_dphi = dshape2_ref[i] @ (invJ @ np.array([[1], [0]]))
-        #     y_dphi = dshape2_ref[i] @ (invJ @ np.array([[0], [1]]))
-        #     # x_dphi = dphi2[:, 0][:, None]
-        #     # y_dphi = dphi2[:, 1][:, None]
-
-        #     # also apply weights from quadrature
-        #     tempx += wts[i] * x_dphi @ phi1
-        #     tempy += wts[i] * y_dphi @ phi1
-
-        # elemBx = -tempx * detJ
-        # elemBy = -tempy * detJ
-
         elemBx = np.zeros((p_2_n, p_1_n))
         elemBy = np.zeros((p_2_n, p_1_n))
-
+        tempx = np.zeros_like(elemBx)
+        tempy = np.zeros_like(elemBy)
+        # Iterate over all points of the quadrature
         for i in range(N_quadr):
-            # grad of P2 basis in physical coords
-            dphi = dshape2_ref[i] @ invJ  # (p_2_n, 2)
-            dphix = dphi[:, 0][:, None]  # (p_2_n, 1)
-            dphiy = dphi[:, 1][:, None]  # (p_2_n, 1)
-            # P1 basis value row at quadrature point
-            phi1 = shape1_ref[i][None, :]  # (1, p_1_n)
-            elemBx += -wts[i] * (dphix @ phi1)  # -∂u_x/∂x test with pressure
-            elemBy += -wts[i] * (dphiy @ phi1)  # -∂u_y/∂y test with pressure
+            # get gradients in actual element
+            phi1 = shape1_ref[i, None]  # 1 x N_p1
 
-        elemBx *= detJ
-        elemBy *= detJ
+            # invJ 2x2
+            # dshape2_ref N_quadr x N_p2 x 2
+            # dphi2 = dshape2_ref[i] @ invJ
+
+            x_dphi = dshape2_ref[i] @ (invJ @ np.array([[1], [0]]))
+            y_dphi = dshape2_ref[i] @ (invJ @ np.array([[0], [1]]))
+            # x_dphi = dphi2[:, 0][:, None]
+            # y_dphi = dphi2[:, 1][:, None]
+
+            # also apply weights from quadrature
+            tempx += wts[i] * x_dphi @ phi1
+            tempy += wts[i] * y_dphi @ phi1
+
+        elemBx = -tempx * detJ
+        elemBy = -tempy * detJ
 
         B[np.ix_(con6, con3_mapped)] += elemBx  # store first component of u_i at i
         B[
@@ -220,7 +201,7 @@ def apply_bc_stokes(
     for i, (line3, tag) in enumerate(zip(lines3, mesh.lineTags)):
 
         if tag == 2:
-            continue
+
             for p_ix in line3:
                 point = mesh.points[p_ix]
                 u = omega2_f(*point)
@@ -228,9 +209,7 @@ def apply_bc_stokes(
                 f[p_ix + N_u] = u[1]
                 # clear rows
                 M[p_ix, :] = 0
-                M[:, p_ix] = 0
                 M[p_ix + N_u, :] = 0
-                M[:, p_ix + N_u] = 0
                 # set diagonal
                 M[p_ix, p_ix] = 1
                 M[p_ix + N_u, p_ix + N_u] = 1
@@ -239,16 +218,14 @@ def apply_bc_stokes(
             # Do nothing boundary / surface integral is 0
             pass
         elif tag == 4 or tag == 5:
-            continue
+
             for p_ix in line3:
                 # zero velocity on bdy
                 f[p_ix] = 0
                 f[p_ix + N_u] = 0
                 # clear rows
                 M[p_ix, :] = 0
-                M[:, p_ix] = 0
                 M[p_ix + N_u, :] = 0
-                M[:, p_ix + N_u] = 0
                 # set diagonal
                 M[p_ix, p_ix] = 1
                 M[p_ix + N_u, p_ix + N_u] = 1
@@ -322,69 +299,21 @@ def get_midpoint(
     return 0.5 * (p1 + p2)
 
 
-# def add_tags(mesh: MeshOps):
-
-#     o2 = lambda x: x[0] + 1
-#     o3 = lambda x: x[0] - 1
-#     o4 = lambda x: x[0] ** 2 + x[1] ** 2 - 0.2**2
-#     o5 = lambda x: np.abs(x[1]) - 1
-
-#     ids = [(2, o2), (3, o3), (4, o4), (5, o5)]
-
-#     eps = 0.001
-#     for tri in mesh.triangles6:
-#         for pt_ix in tri:
-#             pt = mesh.points[pt_ix]
-#             for i, func in ids:
-#                 if func(pt) < eps:
-#                     pass
-
-
-def check_mesh(mesh: MeshOps):
-    n = 0
-    for i, e in enumerate(mesh.triangles6):
-        J = mesh.calcJacobianDeterminantOfTriangle(i)
-        if J < 0:
-            n += 1
-    print(f"{n} Triangles inverted!")
-
-
-def preprocess(mesh: MeshOps):
-    check_mesh(mesh)
-    if np.min(mesh.triangles6[:, 3:]) > np.max(mesh.triangles):
-        # the triangle list is not sorted
-        pass
-
-
-def calc_p1_map(mesh: MeshOps) -> dict[int, int]:
-
-    p1_map = dict()
-
-    for i, point in enumerate(np.unique(mesh.points)):
-        p1_map[point] = i
-
-    return p1_map
-
-
 def solve_stokes(meshfile: str, param: ParamDict) -> None:
     mesh: MeshOps = MeshOps(meshfile)
-    preprocess(mesh)
 
     print_mat: bool = False
 
-    N_u = mesh.getNumberNodes()  # class treats midpoints as points, for p2 mesh
-
-    A, f = assemble_stokes(mesh, param)
-
-    A, f = apply_bc_stokes(mesh, A, f, param)
+    M, g = assemble_stokes(mesh, param)
+    M, g = apply_bc_stokes(mesh, M, g, param)
 
     if print_mat:
-        print(A.toarray())
-        print(f)
+        print(M.toarray())
+        print(g)
 
     N_p2 = mesh.getNumberNodes()
 
-    mn = sp.sparse.linalg.spsolve(A.tocsr(), f)
+    mn = sp.sparse.linalg.spsolve(M.tocsr(), g)
 
     un = mn[: (N_p2 * 2)]
     pn = mn[(N_p2 * 2) :]
@@ -399,39 +328,57 @@ def solve_stokes(meshfile: str, param: ParamDict) -> None:
 
     fig, ax = plt.subplots(nrows=2)
     ax1, ax2 = ax
-    # ax = fig.add_subplot(projection="3d")
-    # ax1 = fig.add_subplot()
-    # ax2 = fig.add_subplot()
 
     x = mesh.points[:, 0]
     y = mesh.points[:, 1]
-    z = un_x
 
     # display linear interpolation between between approximate solution on nodes,
     # meaning vertexes with P1 or vertices and midpoints on P2
     triangles3 = split_6triangles3(mesh)
+    tris = mesh.triangles
     # ax.plot_trisurf(x, y, z, triangles=triangles, cmap="viridis")
     m1 = ax1.tripcolor(
-        x, y, un_x, triangles=triangles3, cmap="viridis", edgecolor="gray"
+        x,
+        y,
+        un_x,
+        triangles=tris,
+        cmap="viridis",
+        edgecolor="black",
+        shading="flat",
+        linewidth=0.2,
     )
     m2 = ax2.tripcolor(
-        x, y, un_y, triangles=triangles3, cmap="viridis", edgecolor="gray"
+        x,
+        y,
+        un_y,
+        triangles=tris,
+        cmap="viridis",
+        edgecolor="black",
+        shading="flat",
+        linewidth=0.2,
     )
-    m3 = ax1.scatter(x, y, c=un_x)
-    m4 = ax2.scatter(x, y, c=un_y)
+
+    ax1.set_xlabel("x")
+    ax1.set_ylabel("y")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("y")
+    ax1.set_title("$u_1$")
+    ax2.set_title("$u_2$")
+    # m3 = ax1.scatter(x, y, c=un_x)
+    # m4 = ax2.scatter(x, y, c=un_y)
 
     segments = np.array([[mesh.points[i], mesh.points[j]] for i, j in mesh.lines])
     # colors = plt.colormaps.get_cmap()
 
     cmap = matplotlib.colormaps.get_cmap("tab10")  # 10 indexed colors
     cols = [cmap(i) for i in mesh.lineTags]
-    lc = LineCollection(segments, colors=cols)
-    lc2 = LineCollection(segments, colors=cols)
+    lc = LineCollection(segments, colors=cols)  # type: ignore
+    lc2 = LineCollection(segments, colors=cols)  # type: ignore
     ax1.add_collection(lc)
     ax2.add_collection(lc2)
 
-    fig.colorbar(m3)
-    fig.colorbar(m4)
+    fig.colorbar(m1)
+    fig.colorbar(m2)
 
     plt.show()
 
@@ -449,11 +396,6 @@ def split_6triangles3(mesh: MeshOps):
 
 
 param_stokes: ParamDict = dict(
-    laplaceCoeff=1,
-    # source=lambda x, y: np.float64(1.0),
     source=lambda x, y: np.array([0, 0]),
-    dirichlet=0,
-    neumann=1,
-    order=1,
 )
 solve_stokes("mesh/unitSquareStokes.msh", param_stokes)
