@@ -341,6 +341,7 @@ def solve_stokes(meshfile: str, param: ParamDict) -> None:
     tri_p2 = split_6triangles3(mesh)
     tri_p1 = mesh.triangles
     # ax.plot_trisurf(x, y, z, triangles=triangles, cmap="viridis")
+
     m1 = ax1.tripcolor(
         x,
         y,
@@ -402,8 +403,9 @@ def solve_stokes(meshfile: str, param: ParamDict) -> None:
         lc = LineCollection(segments, colors=cols)  # type: ignore
         a.add_collection(lc)
 
-    fig.colorbar(m1, ax=[ax1, ax2, ax3, ax4])
-
+    fig.colorbar(m1, ax=ax1)
+    fig.colorbar(m2, ax=ax2)
+    fig.colorbar(m3, ax=ax3)
     plt.show()
 
 
