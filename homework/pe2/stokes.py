@@ -205,11 +205,19 @@ def apply_bc_stokes(
             for p_ix in line3:
                 point = mesh.points[p_ix]
                 u = omega2_f(*point)
-                f[p_ix] = u[0]
-                f[p_ix + N_u] = u[1]
+                val_x, val_y = u
+                # zero velocity on bdy
+                f[p_ix] = val_x
+                f[p_ix + N_u] = val_y
+                # put known values onto right side
+                f -= M[p_ix].toarray()[0] * val_x
+                f -= M[p_ix + N_u].toarray()[0] * val_y
                 # clear rows
                 M[p_ix, :] = 0
                 M[p_ix + N_u, :] = 0
+                # clear columns
+                M[:, p_ix] = 0
+                M[:, p_ix + N_u] = 0
                 # set diagonal
                 M[p_ix, p_ix] = 1
                 M[p_ix + N_u, p_ix + N_u] = 1
@@ -220,12 +228,20 @@ def apply_bc_stokes(
         elif tag == 4 or tag == 5:
 
             for p_ix in line3:
+                val_x = 0
+                val_y = 0
                 # zero velocity on bdy
-                f[p_ix] = 0
-                f[p_ix + N_u] = 0
+                f[p_ix] = val_x
+                f[p_ix + N_u] = val_y
+                # put known values onto right side
+                f -= M[p_ix].toarray()[0] * val_x
+                f -= M[p_ix + N_u].toarray()[0] * val_y
                 # clear rows
                 M[p_ix, :] = 0
                 M[p_ix + N_u, :] = 0
+                # clear columns
+                M[:, p_ix] = 0
+                M[:, p_ix + N_u] = 0
                 # set diagonal
                 M[p_ix, p_ix] = 1
                 M[p_ix + N_u, p_ix + N_u] = 1
