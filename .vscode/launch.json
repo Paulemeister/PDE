@@ -20,6 +20,22 @@
             "program": "${workspaceFolder}/homework/pe2/stokes.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/homework/pe2"
+        },{
+            "name": "PE3.1lin",
+            "type": "debugpy",
+            "request": "launch",
+            //"program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
+            "program": "${workspaceFolder}/homework/pe3/1lin.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/homework/pe3"
+        },{
+            "name": "PE3.1burgers",
+            "type": "debugpy",
+            "request": "launch",
+            //"program": "${workspaceFolder}/homework/pe2/poisson_demo_p1.py",
+            "program": "${workspaceFolder}/homework/pe3/1burgers.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/homework/pe3"
         }
     ]
 }
